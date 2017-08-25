@@ -73,6 +73,18 @@
         nameDisplayMode: 'on',
         videoDisabledDisplayMode: 'off'
       }
+    },
+    noVideo: {
+      height: '100%',
+      width: '100%',
+      inserMode: 'append',
+      showControls: true,
+      style: {
+        audioLevelDisplayMode: 'auto',
+        buttonDisplayMode: 'off',
+        nameDisplayMode: 'on',
+        videoDisabledDisplayMode: 'off'
+      }
     }
   };
 
@@ -206,6 +218,13 @@
       .then(function(response) {
         debug.log(response);
       });
+  };
+
+  var dialOut = function(phoneNumber) {
+    var data = {
+      phoneNumber: phoneNumber
+    };
+    Request.dialOut(roomName, data);
   };
 
   var roomStatusHandlers = {
@@ -352,6 +371,12 @@
       _sharedStatus.roomMuted = roomMuted;
       setAudioStatus(roomMuted);
       sendSignalMuteAll(roomMuted, false);
+    },
+    dialOut: function(evt) {
+      if (evt.detail.phoneNumber) {
+        var phoneNumber = evt.detail.phoneNumber.replace(/\D/g, '');
+        dialOut(phoneNumber);
+      }
     }
   };
 
@@ -454,12 +479,8 @@
         // dispatches a streamCreated event. For a code example and more details,
         // see StreamEvent.
         var stream = evt.stream;
-        var streamVideoType = stream.videoType;
-
-        if (!(streamVideoType === 'camera' || streamVideoType === 'screen')) {
-          debug.error('Stream not contemplated: ' + stream.videoType);
-          return;
-        }
+        // SIP call streams have no video.
+        var streamVideoType = stream.videoType || 'noVideo';
 
         var streamId = stream.streamId;
         subscriberStreams[streamId] = {
@@ -471,9 +492,20 @@
         var enterWithVideoDisabled = streamVideoType === 'camera' && _disabledAllVideos;
 
         _sharedStatus = RoomStatus.get(STATUS_KEY);
+        
+        var streamName = stream.name;
+        if (!streamName) {
+          try {
+            // SIP calls add the name to the connection data
+            streamName = JSON.parse(stream.connection.data).name;
+          } catch(error){
+            streamName = '';
+          }
+        }
 
+console.log(streamName)
         var subsDOMElem = RoomView.createStreamView(streamId, {
-          name: stream.name,
+          name: streamName,
           type: stream.videoType,
           controlElems: subscriberStreams[streamId].buttons
         });
