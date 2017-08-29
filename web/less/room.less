@@ -395,6 +395,96 @@ body {
   }
 }
 
+#top-banner {
+  height: 98px;
+  object-fit: contain;
+  background-color: #293840;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.5);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  .icon-container {
+    float: left;
+    width: 269px;
+    height: 100%;
+    text-align: center;
+    border-right: 1px solid #455b66;
+    i {
+      margin-top: 31px;
+    }
+  }
+  .center-container {
+    float: left;
+    height: 100%;
+    padding-left: 30px;
+    .room-info {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1.1px;
+      color: #7a8b93;
+      .room-name {
+        font-size: 22px;
+      }
+    }
+  }
+  .right-container {
+    float: right;
+    width: 114px;
+    height: 100%;
+    border-left: 1px solid #455b66;
+  }
+}
+
+.call-controls {
+  position: absolute;
+  display: table;
+  table-layout: fixed;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 86px;
+  width: 520px;
+  margin: auto;
+  z-index: 1001;
+  background-image: url(/images/call-controls-bg.svg);
+  background-repeat: no-repeat;
+  padding: 0 40px;
+  div {
+    display: table-cell;
+    padding-top: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    color: #c0c0c0;
+    button {
+      background-image: url('/images/icons/inactive-circle.svg');
+      width: 54.2px;
+      height: 54.2px;
+      vertical-align: top;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      color: white;
+      i {
+        vertical-align: middle;
+      }
+    }
+    button#endCall {
+      background-image: url('/images/icons/red-circle.svg');
+    }
+    p {
+      margin-top: 10px;
+      margin-bottom: 0;
+      line-height: 0;
+    }
+  }
+}
+
+#dock {
+  display: none;
+}
+
 [data-desktop-status="sharing"] {
   #dock .menu {
     #startSharingDesktop {

@@ -372,10 +372,25 @@
       setAudioStatus(roomMuted);
       sendSignalMuteAll(roomMuted, false);
     },
-    dialOut: function(evt) {
-      if (evt.detail.phoneNumber) {
-        var phoneNumber = evt.detail.phoneNumber.replace(/\D/g, '');
-        dialOut(phoneNumber);
+    addToCall: function() {
+      showAddToCallModal()
+    },
+    togglePublisherAudio: function(evt) {
+      var newStatus = false;
+      // There are a couple of possible race conditions that would end on us not changing
+      // the status on the publisher (because it's already on that state) but where we should
+      // update the UI to reflect the correct state.
+      if (!otHelper.isPublisherReady || otHelper.publisherHas('audio') != newStatus) {
+        sendStatus({ stream: { streamId: 'publisher' } }, 'audio', newStatus);
+      }
+    },
+    togglePublisherVideo: function(evt) {
+      var newStatus = false;
+      // There are a couple of possible race conditions that would end on us not changing
+      // the status on the publisher (because it's already on that state) but where we should
+      // update the UI to reflect the correct state.
+      if (!otHelper.isPublisherReady || otHelper.publisherHas('video') != newStatus) {
+        sendStatus({ stream: { streamId: 'publisher' } }, 'video', newStatus);
       }
     }
   };
@@ -672,6 +687,23 @@ console.log(streamName)
             });
         });
         document.querySelector(selector + ' input.username').focus();
+      });
+    });
+  }
+
+  function showAddToCallModal() {
+    var selector = '.add-to-call-modal';
+    return Modal.show(selector).then(function() {
+      return new Promise(function(resolve, reject) {
+        var enterButton = document.querySelector(selector + ' button');
+        enterButton.addEventListener('click', function onClicked(event) {
+          event.preventDefault();
+          enterButton.removeEventListener('click', onClicked);
+          return Modal.hide(selector)
+            .then(function() {
+              resolve(document.querySelector(selector + ' input').value.trim());
+            });
+        });
       });
     });
   }
