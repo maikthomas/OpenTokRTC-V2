@@ -372,6 +372,12 @@
       setAudioStatus(roomMuted);
       sendSignalMuteAll(roomMuted, false);
     },
+    dialOut: function(evt) {
+      if (evt.detail.phoneNumber) {
+        var phoneNumber = evt.detail.phoneNumber.replace(/\D/g, '');
+        dialOut(phoneNumber);
+      }
+    },
     addToCall: function() {
       showAddToCallModal()
     },
