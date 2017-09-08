@@ -13,6 +13,7 @@
   var enableAnnotations = true;
   var enableHangoutScroll = false;
   var enableArchiveManager = false;
+  var enableSip = false;
 
   var setPublisherReady;
   var publisherReady = new Promise(function(resolve, reject) {
@@ -686,6 +687,7 @@
         aRoomInfo.roomName = aRoomParams.roomName;
         enableAnnotations = aRoomInfo.enableAnnotation;
         enableArchiveManager = aRoomInfo.enableArchiveManager;
+        enableSip = aRoomInfo.enableSip;
         return aRoomInfo;
       });
   }
@@ -742,7 +744,7 @@
   .then(function(aParams) {
     Utils.addEventsHandlers('roomView:', viewEventHandlers, exports);
     Utils.addEventsHandlers('roomStatus:', roomStatusHandlers, exports);
-    RoomView.init(enableHangoutScroll, enableArchiveManager);
+    RoomView.init(enableHangoutScroll, enableArchiveManager, enableSip);
 
     roomName = aParams.roomName;
     userName = aParams.username ? aParams.username.substring(0, 1000) : '';
@@ -760,9 +762,11 @@
 
     _allHandlers = RoomStatus.init(_allHandlers, { room: _sharedStatus });
 
-    GoogleAuth.init(aParams.googleId, aParams.googleHostedDomain, function(aGoogleAuth) {
-      googleAuth = aGoogleAuth;
-    });
+    if (enableSip) {
+      GoogleAuth.init(aParams.googleId, aParams.googleHostedDomain, function(aGoogleAuth) {
+        googleAuth = aGoogleAuth;
+      });
+    }
 
     ChatController
         .init(aParams.roomName, userName, _allHandlers)

@@ -428,6 +428,7 @@ function ServerMethods(aLogLevel, aModules) {
           enableArchiveManager: tbConfig.enableArchiveManager,
           enableAnnotation: tbConfig.enableAnnotations,
           enableArchiving: tbConfig.enableArchiving,
+          enableSip: tbConfig.enableSip,
           googleId: tbConfig.googleId,
           googleHostedDomain: tbConfig.googleHostedDomain,
         };
