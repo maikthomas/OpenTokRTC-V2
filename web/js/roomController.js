@@ -760,7 +760,7 @@
 
     _allHandlers = RoomStatus.init(_allHandlers, { room: _sharedStatus });
 
-    GoogleAuth.init(function(aGoogleAuth) {
+    GoogleAuth.init(aParams.googleId, aParams.googleHostedDomain, function(aGoogleAuth) {
       googleAuth = aGoogleAuth;
     });
 

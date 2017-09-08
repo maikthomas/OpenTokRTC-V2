@@ -107,7 +107,9 @@ function ServerMethods(aLogLevel, aModules) {
       var sipUri = config.get(C.SIP_URI);
       var sipUsername = config.get(C.SIP_USERNAME);
       var sipPassword = config.get(C.SIP_PASSWORD);
-  
+      var googleId = config.get(C.GOOGLE_CLIENT_ID);
+      var googleHostedDomain = config.get(C.GOOGLE_HOSTED_DOMAIN);
+
       // This isn't strictly necessary... but since we're using promises all over the place, it
       // makes sense. The _P are just a promisified version of the methods. We could have
       // overwritten the original methods but this way we make it explicit. That's also why we're
@@ -172,6 +174,8 @@ function ServerMethods(aLogLevel, aModules) {
                 sipUri,
                 sipUsername,
                 sipPassword,
+                googleId,
+                googleHostedDomain,
               }));
     });
   }
@@ -422,6 +426,8 @@ function ServerMethods(aLogLevel, aModules) {
           enableArchiveManager: tbConfig.enableArchiveManager,
           enableAnnotation: tbConfig.enableAnnotations,
           enableArchiving: tbConfig.enableArchiving,
+          googleId: tbConfig.googleId,
+          googleHostedDomain: tbConfig.googleHostedDomain,
         };
         answer[aReq.sessionIdField || 'sessionId'] = usableSessionInfo.sessionId;
         aRes.send(answer);
