@@ -379,24 +379,18 @@
       }
     },
     addToCall: function() {
-      showAddToCallModal()
+      showAddToCallModal();
     },
     togglePublisherAudio: function(evt) {
-      var newStatus = false;
-      // There are a couple of possible race conditions that would end on us not changing
-      // the status on the publisher (because it's already on that state) but where we should
-      // update the UI to reflect the correct state.
-      if (!otHelper.isPublisherReady || otHelper.publisherHas('audio') != newStatus) {
-        sendStatus({ stream: { streamId: 'publisher' } }, 'audio', newStatus);
+      var newStatus = evt.detail.hasAudio;
+      if (!otHelper.isPublisherReady || otHelper.publisherHas('audio') !== newStatus) {
+        otHelper.togglePublisherAudio(newStatus);
       }
     },
     togglePublisherVideo: function(evt) {
-      var newStatus = false;
-      // There are a couple of possible race conditions that would end on us not changing
-      // the status on the publisher (because it's already on that state) but where we should
-      // update the UI to reflect the correct state.
-      if (!otHelper.isPublisherReady || otHelper.publisherHas('video') != newStatus) {
-        sendStatus({ stream: { streamId: 'publisher' } }, 'video', newStatus);
+      var newStatus = evt.detail.hasVideo;
+      if (!otHelper.isPublisherReady || otHelper.publisherHas('video') !== newStatus) {
+        otHelper.togglePublisherVideo(newStatus);
       }
     }
   };
@@ -678,18 +672,41 @@ console.log(streamName)
         document.querySelector('.user-name-modal #enter').disabled = false;
         document.querySelector('.user-name-modal .tc-dialog').addEventListener('submit',
           function(event) {
+            event.preventDefault();
+            RoomView.hidePrecall();
+            otNetworkTest.stopTest();
+            return Modal.hide(selector)
+              .then(function() {
+                publisherOptions.publishAudio = publisherButtons.audio.enabled =
+                  document.getElementById('initialAudioSwitch').classList.contains('activated');
+                publisherOptions.publishVideo = publisherButtons.video.enabled =
+                  document.getElementById('initialVideoSwitch').classList.contains('activated');
+                resolve({
+                  username: document.querySelector(selector + ' input').value.trim(),
+                });
+              });
+          });
+        document.querySelector(selector + ' input.username').focus();
+      });
+    });
+  }
+
+  function displayRoomName(roomName) {
+    // document.querySelector('.top-banner .room-name').textContent = roomName;
+    document.querySelector('.room-info .room-name').textContent = roomName;
+  }
+
+  function showUserNamePrompt(roomName) {
+    var selector = '.user-name-modal';
+    return Modal.show(selector).then(function() {
+      return new Promise(function(resolve, reject) {
+        var enterButton = document.querySelector(selector + ' button');
+        enterButton.addEventListener('click', function onClicked(event) {
           event.preventDefault();
-          RoomView.hidePrecall();
-          otNetworkTest.stopTest();
+          enterButton.removeEventListener('click', onClicked);
           return Modal.hide(selector)
             .then(function() {
-              publisherOptions.publishAudio = publisherButtons.audio.enabled =
-                document.getElementById('initialAudioSwitch').classList.contains('activated');
-              publisherOptions.publishVideo = publisherButtons.video.enabled =
-                document.getElementById('initialVideoSwitch').classList.contains('activated');
-              resolve({
-                username: document.querySelector(selector + ' input').value.trim(),
-              });
+              resolve(document.querySelector(selector + ' input').value.trim());
             });
         });
         document.querySelector(selector + ' input.username').focus();
@@ -758,7 +775,16 @@ console.log(streamName)
 
     return showCallSettingsPrompt(roomName, usrId).then(function(info) {
       info.roomName = roomName;
-      return info;
+
+      displayRoomName(roomName);
+
+      if (usrId || (window.location.origin === getReferrerURL().origin)) {
+        return Promise.resolve(info);
+      }
+      return showUserNamePrompt(roomName).then(function(userName) {
+        info.username = userName;
+        return info;
+      });
     });
   }
 
@@ -858,8 +884,7 @@ console.log(streamName)
         .then(function() {
           var publisherElement = RoomView.createStreamView('publisher', {
             name: userName,
-            type: 'publisher',
-            controlElems: publisherButtons
+            type: 'publisher'
           });
           // If we have all audios disabled, we need to set the button status
           // and don't publish audio
@@ -877,6 +902,7 @@ console.log(streamName)
           publisherOptions.name = userName;
           return otHelper.publish(publisherElement, publisherOptions, {}).then(function() {
             setPublisherReady();
+            RoomView.showPublisherButtons();
           }).catch(function(errInfo) {
             if (errInfo.error.name === 'OT_CHROME_MICROPHONE_ACQUISITION_ERROR') {
               Utils.sendEvent('roomController:chromePublisherError');

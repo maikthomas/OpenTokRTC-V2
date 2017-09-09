@@ -3,10 +3,11 @@
 
   // HTML elements for the view
   var dock;
-  var banner;
   var handler;
   var roomNameElem;
-  var participantsNumberElem;
+  var togglePublisherVideoElem;
+  var togglePublisherAudioElem;
+  var messageButtonElem;
   var participantsStrElem;
   var recordingsNumberElem;
   var videoSwitch;
@@ -79,18 +80,18 @@
 
   function setUnreadMessages(count) {
     _unreadMsg = count;
+    // document.getElementById('unreadMsg').style.display = count === 0 ? 'none' : 'block';
     unreadCountElem.textContent = count;
-    startChatElem.data('unreadMessages', count);
-    HTMLElems.flush(startChatElem);
+    // HTMLElems.flush(unreadCountElem.parentElement);
   }
 
   function setChatStatus(visible) {
     if (visible) {
       _chatHasBeenShown = true;
       setUnreadMessages(0);
-      document.body.data('chatStatus', 'visible');
+      messageButtonElem.classList.add('activated');
     } else {
-      document.body.data('chatStatus', 'hidden');
+      messageButtonElem.classList.remove('activated');
     }
     Utils.sendEvent('roomView:chatVisibility', visible);
     HTMLElems.flush('#toggleChat');
@@ -108,6 +109,7 @@
   var chatEvents = {
     hidden: function(evt) {
       document.body.data('chatStatus', 'hidden');
+      messageButtonElem.classList.remove('activated');
       setUnreadMessages(0);
       HTMLElems.flush('#toggleChat');
     }
@@ -121,7 +123,7 @@
         dock.classList.add('collapsed');
       } else if (dock.data('previouslyCollapsed') !== null) {
         dock.data('previouslyCollapsed') === 'true' ? dock.classList.add('collapsed') :
-                                                        dock.classList.remove('collapsed');
+          dock.classList.remove('collapsed');
         dock.data('previouslyCollapsed', null);
       }
     }
@@ -184,24 +186,25 @@
   }
 
   function initHTMLElements() {
-    dock = document.getElementById('dock');
-    banner = document.getElementById('top-banner');
-    handler = dock.querySelector('#handler');
+    dock = document.getElementById('top-banner');
+    handler = dock;
 
     roomNameElem = dock.querySelector('#roomName');
-    participantsNumberElem = banner.querySelectorAll('.participants');
-    participantsStrElem = dock.querySelector('.participantsStr');
+    participantsStrElem = document.getElementById('participantsStr');
     recordingsNumberElem = dock.querySelector('#recordings');
     videoSwitch = dock.querySelector('#videoSwitch');
     audioSwitch = dock.querySelector('#audioSwitch');
-    startChatElem = dock.querySelector('#startChat');
-    unreadCountElem = dock.querySelector('#unreadCount');
+    startChatElem = document.getElementById('startChat');
+    unreadCountElem = document.getElementById('unreadCount');
+    togglePublisherAudioElem = document.getElementById('toggle-publisher-audio');
+    togglePublisherVideoElem = document.getElementById('toggle-publisher-video');
+    messageButtonElem = document.getElementById('message-btn');
 
     // The title takes two lines maximum when the dock is expanded. When the title takes
     // one line with expanded mode, it ends taking two lines while is collapsing because the witdh
     // is reduced, so we have to fix the height to avoid this ugly effect during transition.
-    var title = dock.querySelector('.info h1');
-    title.style.height = title.clientHeight + 'px';
+    // var title = dock.querySelector('.info h1');
+    // title.style.height = title.clientHeight + 'px';
   }
   
   var setVolumeMeterLevel = function(level) {
@@ -319,6 +322,13 @@
 
   function deleteStreamView(id) {
     LayoutManager.remove(id);
+  }
+
+  function showPublisherButtons() {
+    togglePublisherVideoElem.disabled = false;
+    togglePublisherAudioElem.disabled = false;
+    togglePublisherVideoElem.classList.add('activated');
+    togglePublisherAudioElem.classList.add('activated');
   }
 
   function setSwitchStatus(status, bubbleUp, domElem, evtName) {
@@ -442,13 +452,32 @@
           Utils.sendEvent('roomView:addToCall');
           break;
         case 'toggle-publisher-video':
-          Utils.sendEvent('roomView:togglePublisherVideo');
+          var hasVideo;
+          if (elem.classList.contains('activated')) {
+            elem.classList.remove('activated');
+            hasVideo = false;
+          } else {
+            elem.classList.add('activated');
+            hasVideo = true;
+          }
+          Utils.sendEvent('roomView:togglePublisherVideo', { hasVideo: hasVideo });
           break;
         case 'toggle-publisher-audio':
-          Utils.sendEvent('roomView:togglePublisherAudio');
+          var hasAudio;
+          if (elem.classList.contains('activated')) {
+            elem.classList.remove('activated');
+            hasAudio = false;
+          } else {
+            elem.classList.add('activated');
+            hasAudio = true;
+          }
+          Utils.sendEvent('roomView:togglePublisherAudio', { hasAudio: hasAudio });
           break;
-        case 'toggleChat':
-          setChatStatus(true);
+        case 'screen-share':
+          Utils.sendEvent('roomView:shareScreen');
+          break;
+        case 'message-btn':
+          setChatStatus(!messageButtonElem.classList.contains('activated'));
           break;
         case 'endCall':
           showConfirm(MODAL_TXTS.endCall).then(function(endCall) {
@@ -458,10 +487,10 @@
             }
           });
           break;
-      };
+      }
     });
 
-    var menu = document.querySelector('.menu ul');
+    var menu = document.getElementById('top-banner');
 
     menu.addEventListener('click', function(e) {
       var elem = e.target;
@@ -488,10 +517,6 @@
         case 'startArchiving':
         case 'stopArchiving':
           Utils.sendEvent('roomView:' + elem.id);
-          break;
-        case 'startSharingDesktop':
-        case 'stopSharingDesktop':
-          Utils.sendEvent('roomView:shareScreen');
           break;
         case 'videoSwitch':
           if (!videoSwitch.classList.contains('activated')) {
@@ -551,6 +576,11 @@
   function toggleScreenSharing(evt) {
     var isSharing = evt.detail.isSharing;
     document.body.data('desktopStatus', isSharing ? 'sharing' : 'notSharing');
+    if (isSharing) {
+      document.getElementById('screen-share').classList.add('activated');
+    } else {
+      document.getElementById('screen-share').classList.remove('activated');
+    }
     HTMLElems.flush('#toggleSharing');
   }
 
@@ -595,16 +625,14 @@
     },
 
     set participantsNumber(value) {
-      for (var i = 0, l = participantsNumberElem.length; i < l; i++) {
-        HTMLElems.replaceText(participantsNumberElem[i], value);
-      }
-      HTMLElems.replaceText(participantsStrElem, value === 1 ? 'participant' : 'participants');
+      HTMLElems.replaceText(participantsStrElem, value);
     },
 
     set recordingsNumber(value) {
       recordingsNumberElem && (recordingsNumberElem.textContent = value);
     },
 
+    showPublisherButtons: showPublisherButtons,
     createStreamView: createStreamView,
     deleteStreamView: deleteStreamView,
     setAudioSwitchRemotely: setAudioSwitchRemotely,
