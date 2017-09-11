@@ -631,65 +631,63 @@ function ServerMethods(aLogLevel, aModules) {
     var body = aReq.body;
     if (!body || !body.phoneNumber) {
       logger.log('postRoomDial => missing body parameter: ', aReq.body);
-      aRes.status(400).send(new ErrorInfo(100, 'Missing required parameter'));
-      return;
+      return aRes.status(400).send(new ErrorInfo(400, 'Missing required parameter'));
     }
 
     var auth = new GoogleAuth; // eslint-disable-line new-parens
     var client = new auth.OAuth2(tbConfig.googleId, '', '');
     var verifyIdTokenPromise = Utils.promisify(client.verifyIdToken, 1, client);
 
-    verifyIdTokenPromise(body.googleIdToken, tbConfig.googleId)
+    return verifyIdTokenPromise(body.googleIdToken, tbConfig.googleId)
       .then((login) => {
         var payload = login.getPayload();
         var domain = payload.hd;
         if (domain !== tbConfig.googleHostedDomain) {
           logger.log('postRoomDial => authenticated token domain did not match config: ', domain);
-          aRes.status(403).send(new ErrorInfo(100, 'Authenticaton Domain Invalid'));
-        } else {
-          var phoneNumber = body.phoneNumber;
-          if (dialedNumbersInfo[phoneNumber]) {
-            return;
-          }
-          var otInstance = tbConfig.otInstance;
-
-          serverPersistence
-            .getKey(redisRoomPrefix + roomName)
-            .then((sessionInfo) => {
-              const sessionId = JSON.parse(sessionInfo).sessionId;
-              const token = otInstance.generateToken(sessionId, {
-                role: 'publisher',
-                data: '{"sip":true, "role":"client", "name":"' + phoneNumber + '"}'
-              });
-              var options = {
-                // Plivo accepts custom headers that start with 'X-PH'
-                headers: {
-                  'X-PH-ROOMNAME': roomName,
-                  'X-PH-DIALOUT-NUMBER': phoneNumber,
-                },
-                auth: {
-                  username: tbConfig.sipUsername,
-                  password: tbConfig.sipPassword,
-                },
-                secure: true,
-              };
-              otInstance.dial_P(sessionId, token, tbConfig.sipUri, options)
-                .then((sipCallData) => {
-                  dialedNumbersInfo[phoneNumber] = {};
-                  dialedNumbersInfo[phoneNumber].sessionId = sipCallData.sessionId;
-                  dialedNumbersInfo[phoneNumber].connectionId = sipCallData.connectionId;
-                  aRes.send(sipCallData);
-                })
-                .catch((error) => {
-                  logger.log('postRoomDial error', error);
-                  aRes.status(400).send(new ErrorInfo(400, 'An error ocurred while forwarding SIP Call'));
-                });
-            });
+          return aRes.status(403).send(new ErrorInfo(403, 'Forbidden: Authentication Domain Invalid'));
         }
+        var phoneNumber = body.phoneNumber;
+        if (dialedNumbersInfo[phoneNumber]) {
+          return aRes.status(400).send(new ErrorInfo(400, 'That number has already been dialed'));
+        }
+        var otInstance = tbConfig.otInstance;
+
+        return serverPersistence
+          .getKey(redisRoomPrefix + roomName, true)
+          .then((sessionInfo) => {
+            const sessionId = sessionInfo.sessionId;
+            const token = otInstance.generateToken(sessionId, {
+              role: 'publisher',
+              data: '{"sip":true, "role":"client", "name":"' + phoneNumber + '"}',
+            });
+            var options = {
+              // Plivo accepts custom headers that start with 'X-PH'
+              headers: {
+                'X-PH-ROOMNAME': roomName,
+                'X-PH-DIALOUT-NUMBER': phoneNumber,
+              },
+              auth: {
+                username: tbConfig.sipUsername,
+                password: tbConfig.sipPassword,
+              },
+              secure: true,
+            };
+            otInstance.dial_P(sessionId, token, tbConfig.sipUri, options)
+              .then((sipCallData) => {
+                dialedNumbersInfo[phoneNumber] = {};
+                dialedNumbersInfo[phoneNumber].sessionId = sipCallData.sessionId;
+                dialedNumbersInfo[phoneNumber].connectionId = sipCallData.connectionId;
+                return aRes.send(sipCallData);
+              })
+              .catch((error) => {
+                logger.log('postRoomDial error', error);
+                return aRes.status(400).send(new ErrorInfo(400, 'An error ocurred while forwarding SIP Call'));
+              });
+          });
       })
       .catch((err) => {
         logger.log('postRoomDial => authentication error: ', err);
-        aRes.status(401).send(new ErrorInfo(100, 'Authentication Error'));
+        aRes.status(401).send(new ErrorInfo(401, 'Authentication Error'));
       });
   }
 
@@ -700,7 +698,7 @@ function ServerMethods(aLogLevel, aModules) {
     var plivoResponse = plivo.Response();
     var phoneNumber = aReq.query['X-PH-DIALOUT-NUMBER'];
     plivoResponse.addDial()
-      .addNumber(phoneNumber)
+      .addNumber(phoneNumber);
     aRes.send(plivoResponse.toXML());
   }
 
@@ -709,10 +707,10 @@ function ServerMethods(aLogLevel, aModules) {
   function getHangUp(aReq, aRes) {
     var phoneNumber = aReq.query['X-PH-DIALOUT-NUMBER'];
     var tbConfig = aReq.tbConfig;
-    logger.log('getHangUp', aReq.query, dialedNumbersInfo)
+    logger.log('getHangUp', aReq.query, dialedNumbersInfo);
     if (dialedNumbersInfo[phoneNumber]) {
       tbConfig.otInstance.forceDisconnect(dialedNumbersInfo[phoneNumber].sessionId,
-        dialedNumbersInfo[phoneNumber].connectionId, function() {});
+        dialedNumbersInfo[phoneNumber].connectionId, () => {});
     }
     delete dialedNumbersInfo[phoneNumber];
   }
