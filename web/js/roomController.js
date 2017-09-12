@@ -507,8 +507,6 @@ RecordingsController, ScreenShareController, FeedbackController */
           }
         }
 
-
-        console.log(streamName);
         var subsDOMElem = RoomView.createStreamView(streamId, {
           name: streamName,
           type: stream.videoType,
