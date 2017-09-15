@@ -1,4 +1,7 @@
-!(function(exports) {
+/* global RoomView, Cronograph, FirebaseModel, RecordingsController, Modal,
+BubbleFactory, Clipboard, LayoutManager */
+
+!(function (exports) {
   'use strict';
 
   // HTML elements for the view
@@ -12,8 +15,6 @@
   var recordingsNumberElem;
   var videoSwitch;
   var audioSwitch;
-  var initialVideoSwitch;
-  var initialAudioSwitch;
   var startChatElem;
   var unreadCountElem;
   var enableArchiveManager;
@@ -98,7 +99,7 @@
   }
 
   var chatViews = {
-    unreadMessage: function(evt) {
+    unreadMessage: function () {
       setUnreadMessages(_unreadMsg + 1);
       if (!_chatHasBeenShown) {
         setChatStatus(true);
@@ -107,7 +108,7 @@
   };
 
   var chatEvents = {
-    hidden: function(evt) {
+    hidden: function () {
       document.body.data('chatStatus', 'hidden');
       messageButtonElem.classList.remove('activated');
       setUnreadMessages(0);
@@ -116,7 +117,7 @@
   };
 
   var hangoutEvents = {
-    screenOnStage: function(event) {
+    screenOnStage: function (event) {
       var status = event.detail.status;
       if (status === 'on') {
         dock.data('previouslyCollapsed', dock.classList.contains('collapsed'));
@@ -132,16 +133,16 @@
   var screenShareCtrEvents = {
     changeScreenShareStatus: toggleScreenSharing,
     destroyed: toggleScreenSharing.bind(undefined, NOT_SHARING),
-    annotationStarted: function(evt) {
+    annotationStarted: function () {
       document.body.data('annotationVisible', 'true');
     },
-    annotationEnded: function(evt) {
+    annotationEnded: function () {
       document.body.data('annotationVisible', 'false');
     }
   };
 
   var roomControllerEvents = {
-    userChangeStatus: function(evt) {
+    userChangeStatus: function (evt) {
       // If user changed the status we need to reset the switch
       if (evt.detail.name === 'video') {
         setSwitchStatus(false, false, videoSwitch, 'roomView:videoSwitch');
@@ -149,29 +150,29 @@
         setSwitchStatus(false, false, audioSwitch, 'roomView:muteAllSwitch');
       }
     },
-    roomMuted: function(evt) {
+    roomMuted: function (evt) {
       var isJoining = evt.detail.isJoining;
       setAudioSwitchRemotely(true);
       showConfirm(isJoining ? MODAL_TXTS.join : MODAL_TXTS.muteRemotely);
     },
-    sessionDisconnected: function(evt) {
+    sessionDisconnected: function () {
       RoomView.participantsNumber = 0;
       LayoutManager.removeAll();
     },
-    controllersReady: function() {
+    controllersReady: function () {
       var elements = dock.querySelectorAll('.menu [disabled]');
-      Array.prototype.forEach.call(elements, function(element) {
+      Array.prototype.forEach.call(elements, function (element) {
         Utils.setDisabled(element, false);
       });
     },
-    annotationStarted: function(evt) {
+    annotationStarted: function () {
       document.body.data('annotationVisible', 'true');
     },
-    annotationEnded: function(evt) {
+    annotationEnded: function () {
       document.body.data('annotationVisible', 'false');
     },
-    chromePublisherError: function(evt) {
-      showConfirm(MODAL_TXTS.chromePublisherError).then(function() {
+    chromePublisherError: function () {
+      showConfirm(MODAL_TXTS.chromePublisherError).then(function () {
         document.location.reload();
       });
     }
@@ -205,115 +206,6 @@
     // is reduced, so we have to fix the height to avoid this ugly effect during transition.
     // var title = dock.querySelector('.info h1');
     // title.style.height = title.clientHeight + 'px';
-  }
-  
-  var setVolumeMeterLevel = function(level) {
-    var meterLevel = document.getElementById('audioMeterLevel');
-    var meterWidth = document.getElementById('audioMeterBackground');
-    meterLevel.style.width = (level * 89) + 'px';
-  }
-
-  var startPrecallTestMeter = function() {
-    var meterLevel = document.getElementById('precallTestMeterLevel');
-    var meterWidth = document.getElementById('precallTestMeterBackground');
-    meterLevel.style.width = 0;
-    var preCallTestProgress = 0;
-    var testMeterInterval = setInterval(function() {
-      preCallTestProgress++;
-      meterLevel.style.width = (preCallTestProgress * 89 / 15) + 'px';
-      if (preCallTestProgress === 15) {
-        clearInterval(testMeterInterval);
-      }
-    }, 1000)
-  }
-  
-  var displayNetworkTestResults = function(results) {
-    var packetLossStr;
-    document.getElementById('pre-call-test-results').style.display = 'block';
-    document.getElementById('audio-bitrate').innerText =
-      Math.round(results.audio.bitsPerSecond / 1000);
-    if (results.video && results.text !== 'Your bandwidth can support audio only.') {
-      document.getElementById('video-bitrate').innerText =
-        Math.round(results.video.bitsPerSecond / 1000);
-        packetLossStr = isNaN(results.video.packetLossRatio) ? '' :
-          Math.round(100 * results.video.packetLossRatio) + '% packet loss';
-      document.getElementById('precall-video-packet-loss').innerText = packetLossStr;
-      document.getElementById('precall-audio-results').style.width = '50%';
-      document.getElementById('precall-audio-results').style.right = '0';
-      document.getElementById('precall-video-results').style.display = 'block';
-    } else {
-      document.getElementById('precall-audio-results').style.width = '100%';
-      document.getElementById('precall-audio-results').style['text-align'] = 'center';
-      document.getElementById('precall-video-results').style.display = 'none';
-    }
-    var precallHeading = document.getElementById('pre-call-heading');
-    switch(results.icon) {
-      case 'precall-tick':
-        precallHeading.style.color = '#3fbe36';
-        break;
-      case 'precall-warning':
-        precallHeading.style.color = '#ffcc33';
-        break;
-      case 'precall-error':
-        precallHeading.style.color = '#ff0000';
-        break;
-    }
-    document.getElementById('pre-call-description').innerText = results.text;
-    document.getElementById('precall-icon').setAttribute('data-icon', results.icon);
-    packetLossStr = isNaN(results.audio.packetLossRatio) ? '' :
-      Math.round(100 * results.audio.packetLossRatio) + '% packet loss';
-    document.getElementById('precall-audio-packet-loss').innerText = packetLossStr;
-  }
-
-  var publishSettings = document.querySelector('.publish-settings');
-
-  publishSettings.addEventListener('click', function(e) {
-    var initialVideoSwitch = document.querySelector('#initialVideoSwitch');
-    var initialAudioSwitch = document.querySelector('#initialAudioSwitch');
-    var elem = e.target;
-    elem.blur();
-    // pointer-events is not working on IE so we can receive as target a child
-    elem = HTMLElems.getAncestorByTagName(elem, 'a');
-    if (!elem) {
-      return;
-    }
-    switch (elem.id) {
-      case 'initialAudioSwitch':
-        if (!initialAudioSwitch.classList.contains('activated')) {
-          setSwitchStatus(true, true, initialAudioSwitch, 'roomView:initialAudioSwitch');
-        } else {
-          setSwitchStatus(false, true, initialAudioSwitch, 'roomView:initialAudioSwitch');
-        }
-        break;
-      case 'initialVideoSwitch':
-        if (!initialVideoSwitch.classList.contains('activated')) {
-          setSwitchStatus(true, true, initialVideoSwitch, 'roomView:initialVideoSwitch');
-        } else {
-          setSwitchStatus(false, true, initialVideoSwitch, 'roomView:initialVideoSwitch');
-        }
-        break;
-    }
-  });
-
-  var preCallTestResults = document.getElementById('pre-call-test-results');
-
-  preCallTestResults.addEventListener('click', function(e) {
-    var elem = e.target;
-    switch (elem.id) {
-      case 'precall-close':
-        preCallTestResults.style.display = 'none';
-        break;
-      case 'retest':
-        preCallTestResults.style.display = 'none';
-        Utils.sendEvent('roomView:retest');
-        break;
-        
-    }
-  });
-  
-  var hidePrecall = function() {
-    document.getElementById('video-preview').style.visibility = 'hidden';
-    document.getElementById('dock').style.visibility = 'visible';
   }
 
   function createStreamView(streamId, type, controlBtns, name) {
@@ -355,15 +247,15 @@
     }
     return LazyLoader.dependencyLoad([
       '/js/components/cronograph.js'
-    ]).then(function() {
+    ]).then(function () {
       cronograph = Cronograph;
       return cronograph;
     });
   }
 
   function onStartArchiving(data) {
-    getCronograph().then(function(cronograph) { // eslint-disable-line consistent-return
-      var start = function(archive) {
+    getCronograph().then(function (cronograph) { // eslint-disable-line consistent-return
+      var start = function (archive) {
         var duration = 0;
         archive && (duration = Math.round((Date.now() - archive.createdAt) / 1000));
         cronograph.start(duration);
@@ -374,7 +266,7 @@
         return start(null);
       }
 
-      var onModel = function(model) { // eslint-disable-line consistent-return
+      var onModel = function () { // eslint-disable-line consistent-return
         var archives = FirebaseModel.archives;
         var archiveId = data.id;
 
@@ -404,7 +296,7 @@
   }
 
   function onStopArchiving() {
-    getCronograph().then(function(cronograph) {
+    getCronograph().then(function (cronograph) {
       cronograph.reset();
     });
   }
@@ -419,8 +311,8 @@
     }
 
     return Modal.show(selector, loadModalText)
-      .then(function() {
-        return new Promise(function(resolve, reject) {
+      .then(function () {
+        return new Promise(function (resolve) {
           ui.addEventListener('click', function onClicked(evt) {
             var classList = evt.target.classList;
             var hasAccepted = classList.contains('accept');
@@ -430,14 +322,14 @@
             evt.stopImmediatePropagation();
             evt.preventDefault();
             ui.removeEventListener('click', onClicked);
-            Modal.hide(selector).then(function() { resolve(hasAccepted); });
+            Modal.hide(selector).then(function () { resolve(hasAccepted); });
           });
         });
       });
   }
 
-  var addHandlers = function() {
-    handler.addEventListener('click', function(e) {
+  var addHandlers = function () {
+    handler.addEventListener('click', function () {
       dock.classList.toggle('collapsed');
       dock.data('previouslyCollapsed', null);
     });
@@ -492,7 +384,7 @@
 
     var menu = document.getElementById('top-banner');
 
-    menu.addEventListener('click', function(e) {
+    menu.addEventListener('click', function (e) {
       var elem = e.target;
       elem.blur();
       // pointer-events is not working on IE so we can receive as target a child
@@ -520,7 +412,7 @@
           break;
         case 'videoSwitch':
           if (!videoSwitch.classList.contains('activated')) {
-            showConfirm(MODAL_TXTS.disabledVideos).then(function(shouldDisable) {
+            showConfirm(MODAL_TXTS.disabledVideos).then(function (shouldDisable) {
               shouldDisable && setSwitchStatus(true, true, videoSwitch, 'roomView:videoSwitch');
             });
           } else {
@@ -529,7 +421,7 @@
           break;
         case 'audioSwitch':
           if (!audioSwitch.classList.contains('activated')) {
-            showConfirm(MODAL_TXTS.mute).then(function(shouldDisable) {
+            showConfirm(MODAL_TXTS.mute).then(function (shouldDisable) {
               shouldDisable &&
                 setSwitchStatus(true, true, audioSwitch, 'roomView:muteAllSwitch');
             });
@@ -539,16 +431,7 @@
       }
     });
 
-    var dialOutBtn = document.getElementById('dialOutBtn');
-    dialOutBtn.addEventListener('click', function(event) {
-      event.preventDefault();
-      Utils.sendEvent('roomView:dialOut', {
-        phoneNumber: document.getElementById('dialOutNumber').value
-      });
-      BubbleFactory.get('dialOut').hide();
-    });
-
-    exports.addEventListener('archiving', function(e) {
+    exports.addEventListener('archiving', function (e) {
       var detail = e.detail;
 
       switch (detail.status) {
@@ -584,27 +467,22 @@
     HTMLElems.flush('#toggleSharing');
   }
 
-  var getURLtoShare = function() {
+  var getURLtoShare = function () {
     return window.location.origin + window.location.pathname;
   };
 
-  var addClipboardFeature = function() {
+  var addClipboardFeature = function () {
     var input = document.getElementById('current-url');
     var urlToShare = getURLtoShare();
     input.value = urlToShare;
     var clipboard = new Clipboard(document.querySelector('#addToCall'), { // eslint-disable-line no-unused-vars
-      text: function() {
+      text: function () {
         return urlToShare;
       }
     });
   };
-  
-  var setRoomName = function(roomName) {
-    document.querySelector('.user-name-modal button .room-name').textContent = 'Join ' + roomName;
-    document.getElementById('name-heading').textContent = roomName;
-  }
 
-  var init = function(enableHangoutScroll, aEnableArchiveManager) {
+  var init = function (enableHangoutScroll, aEnableArchiveManager) {
     enableArchiveManager = aEnableArchiveManager;
     initHTMLElements();
     dock.style.visibility = 'visible';
@@ -615,10 +493,6 @@
 
   exports.RoomView = {
     init: init,
-    setVolumeMeterLevel: setVolumeMeterLevel,
-    startPrecallTestMeter: startPrecallTestMeter,
-    displayNetworkTestResults: displayNetworkTestResults,
-    hidePrecall: hidePrecall,
 
     set roomName(value) {
       HTMLElems.addText(roomNameElem, value);
@@ -636,7 +510,6 @@
     createStreamView: createStreamView,
     deleteStreamView: deleteStreamView,
     setAudioSwitchRemotely: setAudioSwitchRemotely,
-    showConfirmChangeMicStatus: showConfirmChangeMicStatus,
-    setRoomName: setRoomName
+    showConfirmChangeMicStatus: showConfirmChangeMicStatus
   };
 }(this));
