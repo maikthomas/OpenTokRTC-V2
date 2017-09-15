@@ -441,6 +441,15 @@ BubbleFactory, Clipboard, LayoutManager */
       }
     });
 
+    var dialOutBtn = document.getElementById('dialOutBtn');
+    dialOutBtn.addEventListener('click', function (event) {
+      event.preventDefault();
+      Utils.sendEvent('roomView:dialOut', {
+        phoneNumber: document.getElementById('dialOutNumber').value
+      });
+      BubbleFactory.get('dialOut').hide();
+    });
+
     exports.addEventListener('archiving', function (e) {
       var detail = e.detail;
 
