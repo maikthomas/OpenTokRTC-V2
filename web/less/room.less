@@ -632,41 +632,105 @@ body {
 }
 
 .feedback-report .tc-dialog {
+  padding: 0px;
   max-width: none;
+  width: 564px;
+  height: 673px;
 
-  .hero {
-    font-family: @muliRegularFont, arial;
-    font-size: 32px;
-    font-weight: 200;
-    line-height: 44px;
-    color: @blueText;
-    margin-top: 25px;
-    margin-bottom: 25px;
-    word-break: break-all;
+  .close {
+    right: 20px;
+    top: 20px;
+    cursor: pointer;
   }
 
-  header {
-    font-family: @muliRegularFont, arial;
-    font-size: 32px;
-    font-weight: 200;
-    line-height: 44px;
-    color: @blueText;
-    margin-bottom: 25px;
-    word-break: break-all;
+  .tab-menu {
+    margin-top: 49px;
+    display: flex;
+    justify-content: center;
+    border-bottom: 1px solid #e8e8e8;
+
+    .tab-header {
+      margin-left: 20px;
+      margin-right: 20px;
+      font-size: 16px;
+      color: #404040;
+    }
+    .tab-header.active {
+      border-bottom: 2px solid #389dc9;
+      color: #389dc9;
+      font-weight: @boldFontWeight;
+    }
   }
+
 
   section {
     font-family: @muliRegularFont, arial;
     font-size: 16px;
-    color: #5f6062;
-    text-align: left;
+    color: #22282d;
+    text-align: center;
     display: block;
     height: 55px;
 
-    label {
-      float: left;
-      line-height: 40px;
-      margin-right: 20px;
+    .video-feedback {
+      border-bottom: 1px solid #e8e8e8;
+      height: 334px;
+    }
+
+    .feedback-title {
+      font-weight: @boldFontWeight;
+      margin-top: 38px;
+      display: block;
+    }
+
+    .feedback-title.suggestion-title {
+      margin-top: 33px;
+    }
+
+    .feedback-video-list {
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .feedback-video-choice {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+
+      padding: 0px;
+      height: 64px;
+      width: 443px;
+      background-color: #fafbfc;
+      margin: 7.5px 0 12px 0;
+      border: 1px solid #cfcfcf;
+
+      .feedback-video-icon {
+        width: 22px;
+        height: 22px;
+        margin: 0 29px 0 29px;
+      }
+
+      .feedback-video-icon {
+        transform: rotate(90deg);
+      }
+
+      span {
+        display: block;
+      }
+    }
+
+
+    .suggestion, .suggestion:focus {
+      width: 436px;
+      border: none;
+      outline: none;
+      border-bottom: 1px solid #ccd2d7;
+    }
+
+    .suggestion::placeholder {
+      color: #a1a8b1;
+      text-align: center;
     }
   }
 

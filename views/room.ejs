@@ -231,7 +231,7 @@
           </p>
         </div>
       </div>
-      <div class=feedback>
+      <div id="showFeedback" class=feedback>
         <span id="feedbackSpan">Feedback / Report a Bug</span>
       </div>
     </section>
@@ -325,48 +325,50 @@
     </section>
 
     <section class="tc-modal feedback-report">
-      <form class="tc-dialog">
-        <i data-icon="close_gray" class="close"></i>
-        <header>
-          <span>Demo Feedback Report</span>
-        </header>
-        <section>
-          <label>Audio Score:</label>
-          <div class="tc-dropdown" data-icon="down">
-            <select class="audio-score">
-              <option value="1">Bad. Very annoying.</option>
-              <option value="2">Poor. Annoying.</option>
-              <option value="3" selected="selected">Fair. Slightly annoying.</option>
-              <option value="4">Good. Not perfect but not annoying.</option>
-              <option value="5">Excellent. Imperceptible impairment.</option>
-            </select>
+      <div class="tc-dialog">
+      <header>
+        <i data-icon="close_gray_full" class="close"></i>
+        <div class="tab-menu">
+            <div class="tab-header active" data-tab="feedback">
+              <span>General Feedback</span>
+            </div>
+            <div class="tab-header" data-tab="report">
+              <span>Report an Issue</span>
+            </div>
           </div>
-        </section>
-        <section>
-          <label>Video Score:</label>
-          <div class="tc-dropdown" data-icon="down">
-            <select class="video-score">
-              <option value="1">Bad. Very annoying.</option>
-              <option value="2">Poor. Annoying.</option>
-              <option value="3" selected="selected">Fair. Slightly annoying.</option>
-              <option value="4">Good. Not perfect but not annoying.</option>
-              <option value="5">Excellent. Imperceptible impairment.</option>
-            </select>
-          </div>
-        </section>
-        <section>
-          <label>Other info:</label>
-          <input class="other-info" placeholder="Type additional info optionally">
-        </section>
-        <footer>
-          <button class="btn btn-blue btn-padding-large ctaarrow-white send-feedback">Send</button>
-        </footer>
-        <div class="hero">Report Issue With Demo</div>
-        <footer>
-          <button class="btn btn-blue btn-padding-large ctaarrow-white report-issue">Report Issue</button>
-        </footer>
-      </form>
-    </section>
+      </header>
+
+      <section data-tab="feedback">
+        <div class="video-feedback">
+          <span class="feedback-title">How was your video call experience?</span>
+          <li class="feedback-video-list">
+            <ul class="feedback-video-choice">
+              <div class="feedback-video-icon">
+                : )
+              </div>
+              <span>Excellent! No issues.</span>
+            </ul>
+            <ul class="feedback-video-choice">
+              <div class="feedback-video-icon">
+                : \
+              </div>
+              <span>It was ok. I had a few issues.</span>
+            </ul>
+            <ul class="feedback-video-choice">
+              <div class="feedback-video-icon">
+              ´: (
+              </div>
+              <span>I'm disappointed.</span>
+            </ul>
+          </li>
+        </div>
+        <div class="feedback-suggestion">
+            <span class="feedback-title suggestion-title">Have a suggestion, or a feature request?</span>
+            <input class="suggestion" placeholder="What's on your mind?" />
+        </div>
+      </section>
+    </div>
+  </section>
 
     <section class="tc-modal archive-delete-modal">
       <form class="tc-dialog">
@@ -389,7 +391,7 @@
         <form id="dialOutForm">
           <p class="title">Dial out</p>
           <p>Enter the phone number:</p>
-          <input id="dialOutNumber" class="block" onclick="this.select();" 
+          <input id="dialOutNumber" class="block" onclick="this.select();"
             placeholder="1-415-555-0123">
           <button id="dialOutBtn" class="btn btn-blue btn-padding ctaarrow-white">Dial</button>
         </form>
