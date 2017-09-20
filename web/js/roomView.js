@@ -7,6 +7,7 @@ BubbleFactory, Clipboard, LayoutManager */
   // HTML elements for the view
   var dock;
   var handler;
+  var callControlsElem;
   var roomNameElem;
   var togglePublisherVideoElem;
   var togglePublisherAudioElem;
@@ -24,6 +25,8 @@ BubbleFactory, Clipboard, LayoutManager */
   var unreadCountElem;
   var enableArchiveManager;
   var enableSip;
+  var hideCallControlsTimer;
+  var overCallControls = false;
 
   var _unreadMsg = 0;
   var _chatHasBeenShown = false;
@@ -197,6 +200,7 @@ BubbleFactory, Clipboard, LayoutManager */
   function initHTMLElements() {
     dock = document.getElementById('top-banner');
     handler = dock;
+    callControlsElem = document.querySelector('.call-controls');
 
     roomNameElem = dock.querySelector('#roomName');
     participantsStrElem = document.getElementById('participantsStr');
@@ -233,6 +237,27 @@ BubbleFactory, Clipboard, LayoutManager */
     initHTMLElements();
     topBannerElem.style.visibility = 'visible';
     screenElem.style.visibility = 'visible';
+    screenElem.addEventListener('mousemove', showCallControls);
+    callControlsElem.addEventListener('mouseover', function() {
+      clearTimeout(hideCallControlsTimer);
+      overCallControls = true;
+    });
+    callControlsElem.addEventListener('mouseout', function() {
+      overCallControls = false;
+      hideCallControls();
+    });
+  }
+
+  function showCallControls(event) {
+    callControlsElem.style.opacity = '1';
+    if (!overCallControls && !hideCallControlsTimer) {
+      hideCallControlsTimer = setTimeout(hideCallControls, 3000);
+    }
+  }
+
+  function hideCallControls() {
+    hideCallControlsTimer = null;
+    callControlsElem.style.opacity = '0';
   }
 
   function showPublisherButtons() {
@@ -361,9 +386,7 @@ BubbleFactory, Clipboard, LayoutManager */
       dock.data('previouslyCollapsed', null);
     });
 
-    var controls = document.querySelector('.call-controls');
-
-    controls.addEventListener('click', function(e) {
+    callControlsElem.addEventListener('click', function(e) {
       var elem = e.target;
       elem = HTMLElems.getAncestorByTagName(elem, 'button');
       switch (elem.id) {
