@@ -172,7 +172,7 @@ BubbleFactory, Clipboard, LayoutManager */
       var selectorStr = '#top-banner [disabled], .call-controls [disabled]'
         + ':not(#toggle-publisher-video):not(#toggle-publisher-audio)';
       var elements = document.querySelectorAll(selectorStr);
-      Array.prototype.forEach.call(elements, function(element) {
+      Array.prototype.forEach.call(elements, function (element) {
         Utils.setDisabled(element, false);
       });
     },
@@ -459,6 +459,22 @@ BubbleFactory, Clipboard, LayoutManager */
         case 'startArchiving':
         case 'stopArchiving':
           Utils.sendEvent('roomView:' + elem.id);
+          break;
+        case 'startChat':
+        case 'stopChat':
+          setChatStatus(elem.id === 'startChat');
+          break;
+        case 'endCall':
+          showConfirm(MODAL_TXTS.endCall).then(function (endCall) {
+            if (endCall) {
+              RoomView.participantsNumber = 0;
+              Utils.sendEvent('roomView:endCall');
+            }
+          });
+          break;
+        case 'startSharingDesktop':
+        case 'stopSharingDesktop':
+          Utils.sendEvent('roomView:shareScreen');
           break;
         case 'videoSwitch':
           if (!videoSwitch.classList.contains('activated')) {
