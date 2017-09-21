@@ -15,7 +15,11 @@ var SwaggerBP = require('swagger-boilerplate');
 var C = require('./serverConstants');
 var configLoader = require('./configLoader');
 var FirebaseArchives = require('./firebaseArchives');
+var plivo = require('plivo');
+var GoogleAuth = require('google-auth-library');
 
+
+var dialedNumbersInfo = {}; // Maps dialed SIP numbers to OpenTok session IDs and connection IDs
 
 function ServerMethods(aLogLevel, aModules) {
   aModules = aModules || {};
@@ -89,6 +93,7 @@ function ServerMethods(aLogLevel, aModules) {
       var templatingSecret = config.get(C.TEMPLATING_SECRET);
       var apiKey = config.get(C.OPENTOK_API_KEY);
       var apiSecret = config.get(C.OPENTOK_API_SECRET);
+      logger.log('apiSecret', apiSecret);
       var archivePollingTO = config.get(C.ARCHIVE_POLLING_INITIAL_TIMEOUT);
       var archivePollingTOMultiplier =
                 config.get(C.ARCHIVE_POLLING_TIMEOUT_MULTIPLIER);
@@ -100,12 +105,19 @@ function ServerMethods(aLogLevel, aModules) {
       var iosAppId = config.get(C.IOS_APP_ID);
       var iosUrlPrefix = config.get(C.IOS_URL_PREFIX);
 
+      var enableSip = config.get(C.SIP_ENABLED);
+      var sipUri = config.get(C.SIP_URI);
+      var sipUsername = config.get(C.SIP_USERNAME);
+      var sipPassword = config.get(C.SIP_PASSWORD);
+      var googleId = config.get(C.GOOGLE_CLIENT_ID);
+      var googleHostedDomain = config.get(C.GOOGLE_HOSTED_DOMAIN);
+
       // This isn't strictly necessary... but since we're using promises all over the place, it
       // makes sense. The _P are just a promisified version of the methods. We could have
       // overwritten the original methods but this way we make it explicit. That's also why we're
       // breaking camelCase here, to make it patent to the reader that those aren't standard
       // methods of the API.
-      ['startArchive', 'stopArchive', 'getArchive', 'listArchives', 'deleteArchive']
+      ['startArchive', 'stopArchive', 'getArchive', 'listArchives', 'deleteArchive', 'dial']
               .forEach(method => otInstance[method + '_P'] = promisify(otInstance[method])); // eslint-disable-line no-return-assign
 
       var maxSessionAge = config.get(C.OPENTOK_MAX_SESSION_AGE);
@@ -160,6 +172,12 @@ function ServerMethods(aLogLevel, aModules) {
                 enableScreensharing,
                 enableAnnotations,
                 enableFeedback,
+                enableSip,
+                sipUri,
+                sipUsername,
+                sipPassword,
+                googleId,
+                googleHostedDomain,
               }));
     });
   }
@@ -287,36 +305,46 @@ function ServerMethods(aLogLevel, aModules) {
       (tbConfig.templatingSecret === query.template_auth) && query.template;
     var userName = query && query.userName;
 
-    // We really don't want to cache this
-    aRes.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    aRes.set('Pragma', 'no-cache');
-    aRes.set('Expires', 0);
-    aRes
-      .render((template || tbConfig.defaultTemplate) + '.ejs',
-      {
-        isWebRTCVersion: tbConfig.isWebRTCVersion,
-        userName: userName || C.DEFAULT_USER_NAME,
-        roomName: aReq.params.roomName,
-        chromeExtensionId: tbConfig.chromeExtId,
-        iosAppId: tbConfig.iosAppId,
-               // iosUrlPrefix should have something like:
-               // https://opentokdemo.tokbox.com/room/
-               // or whatever other thing that should be before the roomName
-        iosURL: tbConfig.iosUrlPrefix + aReq.params.roomName + '?userName=' +
-                       (userName || C.DEFAULT_USER_NAME),
-        enableArchiving: tbConfig.enableArchiving,
-        enableArchiveManager: tbConfig.enableArchiveManager,
-        enableScreensharing: tbConfig.enableScreensharing,
-        enableAnnotation: tbConfig.enableAnnotation,
-        enableFeedback: tbConfig.enableFeedback,
-      }, (err, html) => {
-        if (err) {
-          logger.log('getRoom. error:', err);
-          aRes.status(400).send(new ErrorInfo(400, 'Unknown template.'));
-        } else {
-          aRes.send(html);
-        }
-      });
+    // Create a session ID and token for the network test
+    tbConfig.otInstance.createSession({ mediaMode: 'routed' }, (error, testSession) => {
+      // We really don't want to cache this
+      aRes.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      aRes.set('Pragma', 'no-cache');
+      aRes.set('Expires', 0);
+      aRes
+        .render((template || tbConfig.defaultTemplate) + '.ejs',
+        {
+          isWebRTCVersion: tbConfig.isWebRTCVersion,
+          userName: userName || C.DEFAULT_USER_NAME,
+          roomName: aReq.params.roomName,
+          chromeExtensionId: tbConfig.chromeExtId,
+          iosAppId: tbConfig.iosAppId,
+                 // iosUrlPrefix should have something like:
+                 // https://opentokdemo.tokbox.com/room/
+                 // or whatever other thing that should be before the roomName
+          iosURL: tbConfig.iosUrlPrefix + aReq.params.roomName + '?userName=' +
+                         (userName || C.DEFAULT_USER_NAME),
+          enableArchiving: tbConfig.enableArchiving,
+          enableArchiveManager: tbConfig.enableArchiveManager,
+          enableScreensharing: tbConfig.enableScreensharing,
+          enableAnnotation: tbConfig.enableAnnotation,
+          enableFeedback: tbConfig.enableFeedback,
+          hasSip: tbConfig.enableSip,
+          precallSessionId: testSession.sessionId,
+          apiKey: tbConfig.apiKey,
+          precallToken: tbConfig.otInstance
+                  .generateToken(testSession.sessionId, {
+                    role: 'publisher',
+                  }),
+        }, (err, html) => {
+          if (err) {
+            logger.log('getRoom. error:', err);
+            aRes.status(400).send(new ErrorInfo(400, 'Unknown template.'));
+          } else {
+            aRes.send(html);
+          }
+        });
+    });
   }
 
   // Given a sessionInfo (which might be empty or non usable) returns a promise than will fullfill
@@ -409,6 +437,9 @@ function ServerMethods(aLogLevel, aModules) {
           enableArchiveManager: tbConfig.enableArchiveManager,
           enableAnnotation: tbConfig.enableAnnotations,
           enableArchiving: tbConfig.enableArchiving,
+          enableSip: tbConfig.enableSip,
+          googleId: tbConfig.googleId,
+          googleHostedDomain: tbConfig.googleHostedDomain,
         };
         answer[aReq.sessionIdField || 'sessionId'] = usableSessionInfo.sessionId;
         aRes.send(answer);
@@ -600,6 +631,99 @@ function ServerMethods(aLogLevel, aModules) {
       });
   }
 
+  // /room/:roomName/dial
+  // Returns DialInfo:
+  // { number: string, status: string }
+  function postRoomDial(aReq, aRes) {
+    var tbConfig = aReq.tbConfig;
+    var roomName = aReq.params.roomName.toLowerCase();
+    var body = aReq.body;
+    if (!body || !body.phoneNumber) {
+      logger.log('postRoomDial => missing body parameter: ', aReq.body);
+      return aRes.status(400).send(new ErrorInfo(400, 'Missing required parameter'));
+    }
+
+    var auth = new GoogleAuth; // eslint-disable-line new-parens
+    var client = new auth.OAuth2(tbConfig.googleId, '', '');
+    var verifyIdTokenPromise = Utils.promisify(client.verifyIdToken, 1, client);
+
+    return verifyIdTokenPromise(body.googleIdToken, tbConfig.googleId)
+      .then((login) => {
+        var payload = login.getPayload();
+        var domain = payload.hd;
+        if (domain !== tbConfig.googleHostedDomain) {
+          logger.log('postRoomDial => authenticated token domain did not match config: ', domain);
+          return aRes.status(403).send(new ErrorInfo(403, 'Forbidden: Authentication Domain Invalid'));
+        }
+        var phoneNumber = body.phoneNumber;
+        if (dialedNumbersInfo[phoneNumber]) {
+          return aRes.status(400).send(new ErrorInfo(400, 'That number has already been dialed'));
+        }
+        var otInstance = tbConfig.otInstance;
+
+        return serverPersistence
+          .getKey(redisRoomPrefix + roomName, true)
+          .then((sessionInfo) => {
+            const sessionId = sessionInfo.sessionId;
+            const token = otInstance.generateToken(sessionId, {
+              role: 'publisher',
+              data: '{"sip":true, "role":"client", "name":"' + phoneNumber + '"}',
+            });
+            var options = {
+              // Plivo accepts custom headers that start with 'X-PH'
+              headers: {
+                'X-PH-ROOMNAME': roomName,
+                'X-PH-DIALOUT-NUMBER': phoneNumber,
+              },
+              auth: {
+                username: tbConfig.sipUsername,
+                password: tbConfig.sipPassword,
+              },
+              secure: true,
+            };
+            otInstance.dial_P(sessionId, token, tbConfig.sipUri, options)
+              .then((sipCallData) => {
+                dialedNumbersInfo[phoneNumber] = {};
+                dialedNumbersInfo[phoneNumber].sessionId = sipCallData.sessionId;
+                dialedNumbersInfo[phoneNumber].connectionId = sipCallData.connectionId;
+                return aRes.send(sipCallData);
+              })
+              .catch((error) => {
+                logger.log('postRoomDial error', error);
+                return aRes.status(400).send(new ErrorInfo(400, 'An error ocurred while forwarding SIP Call'));
+              });
+          });
+      })
+      .catch((err) => {
+        logger.log('postRoomDial => authentication error: ', err);
+        aRes.status(401).send(new ErrorInfo(401, 'Authentication Error'));
+      });
+  }
+
+  // /forward
+  // Returns Plivo call-forwarding XML:
+  // { callStatus, callUUId, fromPhone }
+  function getForward(aReq, aRes) {
+    var plivoResponse = plivo.Response();
+    var phoneNumber = aReq.query['X-PH-DIALOUT-NUMBER'];
+    plivoResponse.addDial()
+      .addNumber(phoneNumber);
+    aRes.send(plivoResponse.toXML());
+  }
+
+  // /hang-up
+  // Indicates a phone call on the SIP gateway has ended
+  function getHangUp(aReq) {
+    var phoneNumber = aReq.query['X-PH-DIALOUT-NUMBER'];
+    var tbConfig = aReq.tbConfig;
+    logger.log('getHangUp', aReq.query, dialedNumbersInfo);
+    if (dialedNumbersInfo[phoneNumber]) {
+      tbConfig.otInstance.forceDisconnect(dialedNumbersInfo[phoneNumber].sessionId,
+        dialedNumbersInfo[phoneNumber].connectionId, () => {});
+    }
+    delete dialedNumbersInfo[phoneNumber];
+  }
+
   function loadConfig() {
     tbConfigPromise = _initialTBConfig();
     return tbConfigPromise;
@@ -633,6 +757,9 @@ function ServerMethods(aLogLevel, aModules) {
     getArchive,
     deleteArchive,
     getRoomArchive,
+    postRoomDial,
+    getForward,
+    getHangUp,
     oldVersionCompat,
   };
 }
