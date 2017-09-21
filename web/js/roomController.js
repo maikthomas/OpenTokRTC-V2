@@ -1,6 +1,6 @@
 /* global Utils, Request, RoomStatus, RoomView, LayoutManager, Modal, LazyLoader,
 EndCallController, ChatController, GoogleAuth, LayoutMenuController, RecordingsController,
-ScreenShareController, FeedbackController */
+ScreenShareController, FeedbackController, PhoneNumberController */
 
 !(function (exports) {
   'use strict';
@@ -406,7 +406,7 @@ ScreenShareController, FeedbackController */
         }
       }
     },
-      addToCall: function () {
+    addToCall: function () {
       showAddToCallModal();
     },
     togglePublisherAudio: function (evt) {
@@ -770,7 +770,8 @@ ScreenShareController, FeedbackController */
     '/js/layoutMenuController.js',
     '/js/screenShareController.js',
     '/js/feedbackController.js',
-    '/js/googleAuth.js'
+    '/js/googleAuth.js',
+    '/js/phoneNumberController.js'
   ];
 
   var init = function () {
@@ -868,6 +869,7 @@ ScreenShareController, FeedbackController */
                                     aParams.firebaseToken, aParams.sessionId);
           ScreenShareController.init(userName, aParams.chromeExtId, otHelper, enableAnnotations);
           FeedbackController.init(otHelper);
+          PhoneNumberController.init();
           Utils.sendEvent('roomController:controllersReady');
         })
         .catch(function (error) {

@@ -23,6 +23,7 @@
     <link rel="chrome-webstore-item" href="https://chrome.google.com/webstore/detail/<%=chromeExtensionId%>">
     <link rel="stylesheet" href="https://assets.tokbox.com/solutions/css/style.css">
     <link rel="stylesheet" href="/css/annotation.opentok.css">
+    <link rel="stylesheet" href="/css/intlTelInput.css">
 
     <script>
       window.isWebRTCVersion=<%=isWebRTCVersion%>
@@ -391,7 +392,7 @@
         <form id="dialOutForm">
           <p class="title">Dial out</p>
           <p>Enter the phone number:</p>
-          <input id="dialOutNumber" class="block" onclick="this.select();" 
+          <input id="dialOutNumber" class="block" onclick="this.select();"
             placeholder="1-415-555-0123">
           <button id="dialOutBtn" class="btn btn-blue btn-padding ctaarrow-white">Dial</button>
         </form>
