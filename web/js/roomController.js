@@ -399,6 +399,7 @@ ScreenShareController, FeedbackController, PhoneNumberController */
         var phoneNumber = evt.detail.phoneNumber.replace(/\D/g, '');
         if (requireGoogleAuth && (googleAuth.isSignedIn.get() !== true)) {
           googleAuth.signIn().then(function () {
+            document.body.data('google-signed-in', 'true');
             dialOut(phoneNumber);
           });
         } else {
@@ -828,6 +829,9 @@ ScreenShareController, FeedbackController, PhoneNumberController */
     if (enableSip && requireGoogleAuth) {
       GoogleAuth.init(aParams.googleId, aParams.googleHostedDomain, function (aGoogleAuth) {
         googleAuth = aGoogleAuth;
+        if (googleAuth.isSignedIn.get()) {
+          document.body.data('google-signed-in', 'true');
+        }
       });
     }
 
