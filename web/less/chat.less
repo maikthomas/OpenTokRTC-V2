@@ -95,6 +95,7 @@
         align-self: flex-end;
 
         & > p {
+          border-right: 2px solid #10A9DC;
           text-align: right;
           margin-left: 40px;
           margin-right: 0;
@@ -167,6 +168,17 @@
           a, p, span {
             user-select: text;
           }
+
+          @chat-colors: #C41F4B, #F5A623, #E8520C, #DC0CE8, #600DFF, #54CC14, #54CC14, #54CC14, #54CC14, #54CC14;
+          .loop(@counter) when (@counter > 0) {
+            .loop((@counter - 1));    // next iteration
+            @index: (@counter - 1);
+            & > p[data-participant-number="@{index}"] {
+              border-left: 2px solid;
+              border-color: extract(@chat-colors, @counter); // code for each iteration
+            }
+          }
+          .loop(10);
         }
       }
     }
